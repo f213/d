@@ -12,8 +12,8 @@ _version = None
 def check_environment():
     assert 'CIRCLECI' in os.environ, 'This script is intended to run inside the circleci.com'
 
-    assert 'DOCKER_LOGIN' in os.environ and 'DOCKER_PASSWORD' in os.environ, \
-        'You should have $DOCKER_LOGIN and $DOCKER_PASSWORD defined in your build env'
+    assert 'DOCKER_USER' in os.environ and 'DOCKER_PASSWORD' in os.environ, \
+        'You should have $DOCKER_USER and $DOCKER_PASSWORD defined in your build env'
 
 
 def get_build_version():
@@ -37,12 +37,12 @@ def get_tag(label, version=None):
 def docker_login():
     code = subprocess.call([
         'docker', 'login',
-        '-u', os.environ['DOCKER_LOGIN'],
+        '-u', os.environ['DOCKER_USER'],
         '-p', os.environ['DOCKER_PASSWORD']
     ])
 
     if code:
-        raise RuntimeError("Docker login with the login '%s' failed" % os.environ['DOCKER_LOGIN'])
+        raise RuntimeError("Docker login with the login '%s' failed" % os.environ['DOCKER_USER'])
 
 
 def docker_build(label, ctx):
