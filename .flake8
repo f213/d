@@ -1,0 +1,10 @@
+[flake8]
+ignore = E501, E265, F811, T001
+max-line-length = 160
+exclude =
+      static,
+      migrations,
+      frontend,
+      .git,
+      __pycache__
+      venv

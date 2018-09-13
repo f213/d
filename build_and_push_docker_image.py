@@ -2,12 +2,14 @@
 """Build docker image and upload it to the registry"""
 
 from __future__ import print_function
+
 import argparse
 import os
 import subprocess
 from datetime import datetime
 
 _version = None
+
 
 def check_environment():
     assert 'CIRCLECI' in os.environ, 'This script is intended to run inside the circleci.com'
@@ -38,7 +40,7 @@ def docker_login():
     code = subprocess.call([
         'docker', 'login',
         '-u', os.environ['DOCKER_USER'],
-        '-p', os.environ['DOCKER_PASSWORD']
+        '-p', os.environ['DOCKER_PASSWORD'],
     ])
 
     if code:
