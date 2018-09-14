@@ -132,7 +132,7 @@ class DeployStack(BaseCommand):
 
 
 class BuildImage(BaseCommand):
-    """Build docker image and version in based on current HEAD commit"""
+    """Build docker image and label it with HEAD commit hash"""
     def pre_run_check(self):
         assert 'CIRCLECI' in os.environ, 'This script is intended to run inside the circleci.com'
 
