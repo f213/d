@@ -103,6 +103,7 @@ class Host(object):
 
 
 class DeployStack(BaseCommand):
+    """Deploy or update a stack, using docker stack deploy"""
     def add_arguments(self, parser):
         parser.add_argument('-c', '--config', help='Stack description in docker-compose format', default='docker-compose.prod.yml')
 
@@ -131,6 +132,7 @@ class DeployStack(BaseCommand):
 
 
 class BuildImage(BaseCommand):
+    """Build docker image and version in based on current HEAD commit"""
     def pre_run_check(self):
         assert 'CIRCLECI' in os.environ, 'This script is intended to run inside the circleci.com'
 
@@ -168,6 +170,7 @@ class BuildImage(BaseCommand):
 
 
 class PushImage(BaseCommand):
+    """Push previously built image to the dockerhub"""
     def pre_run_check(self):
         assert 'DOCKER_USER' in os.environ and 'DOCKER_PASSWORD' in os.environ, \
             'You should have $DOCKER_USER and $DOCKER_PASSWORD defined in your build env'
@@ -194,6 +197,7 @@ class PushImage(BaseCommand):
 
 
 class UpdateImage(BaseCommand):
+    """Update image in the running stack"""
     def add_arguments(self, parser):
         parser.add_argument('manager', help='Manager')
         parser.add_argument('name', help='Stack name')
@@ -231,7 +235,10 @@ def main(command):
 
     if command.lower() not in command_registry.keys():
         print('Usage: %s COMMAND <OPTIONS>' % sys.argv[0])
-        print(' Where COMMAND is one of', ', '.join(command_registry.keys()))
+        print('\n\nWhere COMMAND is one of the following:')
+        for command, command_class in command_registry.items():
+            print('     ', command, '\t', '{}.'.format(command_class.__doc__))
+
         exit(127)
 
     klass = command_registry[command.lower()]
