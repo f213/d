@@ -7,7 +7,7 @@ if [ -z $D_RELEASE ]; then
 fi
 
 mkdir -p .d
-wget -o /dev/null -O - https://github.com/f213/d/archive/$D_RELEASE.tar.gz | tar zxp -C .d '*/d.py'
+wget -o /dev/null -O - https://github.com/f213/d/archive/$D_RELEASE.tar.gz | tar zxp -C .d
 
 if [ ! -d ".d/d-${D_RELEASE}" ]; then
     echo "Problem with downloading, check D_RELEASE environment variable (you've got ${D_RELEASE}) and github connectivity"
@@ -19,3 +19,5 @@ mv .d/d-$D_RELEASE/d.py d
 chmod +x ./d
 
 rm -Rf .d
+
+echo d v.${D_RELEASE} installed.
