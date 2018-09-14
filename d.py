@@ -177,7 +177,6 @@ class PushImage(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('label', help='Docker image label, like you/prj')
-        parser.add_argument('ctx', help='Build context path')
 
     @staticmethod
     def docker_login():
