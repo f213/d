@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime
 
 STACK_DIR = os.environ.get('STACK_DIR', '/srv')
 
@@ -62,10 +63,10 @@ def run_with_output(*args):
     return subprocess.check_output(args).decode()
 
 
-def parse_image(name):
+def label_and_tag(name):
     got = name.split(':')
     if len(got) == 1:
-        got[1] = None
+        got.append(None)
     return got
 
 
@@ -133,22 +134,32 @@ class DeployStack(BaseCommand):
 
 class BuildImage(BaseCommand):
     """Build docker image and label it with HEAD commit hash"""
+    TAGGING_METHODS = {
+        'sha1': lambda: os.environ['CIRCLE_SHA1'],
+        'date': lambda: datetime.now().strftime('%Y%m%d%H%M'),
+    }
+
     def pre_run_check(self):
         assert 'CIRCLECI' in os.environ, 'This script is intended to run inside the circleci.com'
 
     def add_arguments(self, parser):
         parser.add_argument('label', help='Docker image label, like you/prj')
         parser.add_argument('ctx', help='Build context path')
+        parser.add_argument('-t', '--tag-method', help="Image taggging method, 'sha1' (from circleci) or 'date'", default='sha1')
 
-    @staticmethod
-    def label_with_tag(label, tag=None):
-        if ':' in label:
+    @classmethod
+    def label(cls, label, tag=None, tag_method='sha1'):
+        if ':' in label and tag is None:
             return label
 
-        return ':'.join([label, tag or os.environ['CIRCLE_SHA1']])
+        if ':' in label and tag is not None:  # replace existing tag
+            label, _ = label_and_tag(label)
+            return ':'.join([label, tag])
 
-    def docker_build(self, label, ctx, **kwargs):
-        label = self.label_with_tag(label)
+        return ':'.join([label, tag or cls.TAGGING_METHODS[tag_method]()])
+
+    def docker_build(self, label, ctx, tag_method, **kwargs):
+        label = self.label(label, tag_method=tag_method)
         print('Building', label)
 
         run(
@@ -203,7 +214,7 @@ class UpdateImage(BaseCommand):
         parser.add_argument('image', help='Image name')
 
     def find_services(self, manager, name, image):
-        image, _ = parse_image(image)  # only image name
+        image, _ = label_and_tag(image)  # only image name
 
         for service in manager.ssh_output(
             'docker', 'stack', 'services',
@@ -212,7 +223,7 @@ class UpdateImage(BaseCommand):
         ):
 
             service, image_name = service.split('|')
-            service_image, _ = parse_image(image_name)
+            service_image, _ = label_and_tag(image_name)
 
             if service_image == image:
                 yield service
