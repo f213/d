@@ -167,8 +167,9 @@ class BuildImage(BaseCommand):
             '-t', label,
             ctx,
         )
+        return label
 
-    def tag_as_latest(self, label, **kwargs):
+    def tag_as_latest(self, label):
         versioned = self.label(label)
         latest = self.label(label, 'latest')
         print('Tagging', versioned, 'as', latest)
@@ -176,8 +177,8 @@ class BuildImage(BaseCommand):
         run('docker', 'tag', versioned, latest)
 
     def handle(self, **kwargs):
-        self.docker_build(**kwargs)
-        self.tag_as_latest(**kwargs)
+        label = self.docker_build(**kwargs)
+        self.tag_as_latest(label)
 
 
 class PushImage(BaseCommand):
