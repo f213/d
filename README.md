@@ -3,7 +3,7 @@
 ## Installation
 
 ```sh
-export D_RELEASE=0.1.0  # the latest one
+export D_RELEASE=0.2.2  # the latest one
 wget -O - https://cdn.rawgit.com/f213/d/351d2459/install.sh|sh
 ```
 
