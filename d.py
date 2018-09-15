@@ -169,8 +169,8 @@ class BuildImage(BaseCommand):
         )
 
     def tag_as_latest(self, label, **kwargs):
-        versioned = self.label_with_tag(label)
-        latest = self.label_with_tag(label, 'latest')
+        versioned = self.label(label)
+        latest = self.label(label, 'latest')
         print('Tagging', versioned, 'as', latest)
 
         run('docker', 'tag', versioned, latest)
