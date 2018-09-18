@@ -251,7 +251,7 @@ class AddHostKey(BaseCommand):
 
         assert not path.exists(self.destination), '~/.ssh/known_hosts file already exists'
 
-        run('mkdir', '-p', path.basename(self.destination))
+        run('mkdir', '-p', path.dirname(self.destination))
         run('cp', key, self.destination)
 
     @property
