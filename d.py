@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime
+from os import path
 
 STACK_DIR = os.environ.get('STACK_DIR', '/srv')
 
@@ -238,6 +239,24 @@ class UpdateImage(BaseCommand):
                 '--with-registry-auth',
                 '--image', image,
             ] + remainder + [service])
+
+
+class AddHostKey(BaseCommand):
+    """Add host key to .ssh/known_hosts storage"""
+    def add_arguments(self, parser):
+        parser.add_argument('-k', '--key', help='Key path', default='.circleci/known_hosts')
+
+    def handle(self, key, **kwargs):
+        assert path.exists(key), '{} does not exist'.format(key)
+
+        assert not path.exists(self.destination), '~/.ssh/known_hosts file already exists'
+
+        run('mkdir', '-p', path.basename(self.destination))
+        run('cp', key, self.destination)
+
+    @property
+    def destination(self):
+        return path.expanduser('~/.ssh/known_hosts')
 
 
 def main(command):
