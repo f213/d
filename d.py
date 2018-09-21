@@ -245,11 +245,13 @@ class AddHostKey(BaseCommand):
     """Add host key to .ssh/known_hosts storage"""
     def add_arguments(self, parser):
         parser.add_argument('-k', '--key', help='Key path', default='.circleci/known_hosts')
+        parser.add_argument('--force', help='Overwrite existing host key', action='store_true')
 
-    def handle(self, key, **kwargs):
+    def handle(self, key, force=False, **kwargs):
         assert path.exists(key), '{} does not exist'.format(key)
 
-        assert not path.exists(self.destination), '~/.ssh/known_hosts file already exists'
+        if not force:
+            assert not path.exists(self.destination), '~/.ssh/known_hosts file already exists'
 
         run('mkdir', '-p', path.dirname(self.destination))
         run('cp', key, self.destination)
