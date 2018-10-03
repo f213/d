@@ -278,6 +278,24 @@ class AddHostKey(BaseCommand):
         return path.expanduser('~/.ssh/known_hosts')
 
 
+class RunCommand(ManagerCommand):
+    """Run command one the host machine within specified container"""
+    def add_arguments(self, parser):
+        parser.add_argument('--env-from', help='Take envirnoment variables from specified service', default='')
+        parser.add_argument('-i', '--image', help='Image to run the command')
+        parser.add_argument('command', help='Command to run within container')
+
+    def handle(self, env_from, image, command, remainder, **kwargs):
+        env = self.get_env(env_from) if len(env_from) else {}
+        assert False, env
+        pass
+
+    def get_env(self, env_from):
+        got = self.host.ssh_json('docker', 'service', 'inspect', env_from)[0]
+        env = got['Spec']['TaskTemplate']['ContainerSpec']['Env']
+        return {left: right for [left, right] in map(lambda a: a.split('='), env)}
+
+
 def get_command_registry():
     def get_subclasses(klass):
         """Recursively get subclasses"""
