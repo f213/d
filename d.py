@@ -37,7 +37,7 @@ class BaseCommand(object):
         self.pre_add_arguments(parser)
         self.add_arguments(parser)
 
-        parser.add_argument('remainder', nargs=argparse.REMAINDER)
+        parser.add_argument('remainder', nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
         self.args = vars(parser.parse_args())
 
