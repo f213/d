@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -95,6 +96,12 @@ class Host(object):
         return [line for line in output.split('\n') if len(line)]
 
         return output
+
+    def ssh_json(self, *args):
+        output = ''.join(self.ssh_output(*args))
+        print(output)
+
+        return json.loads(output)
 
     def scp(self, src, dst):
         """Copy local file to the host"""
