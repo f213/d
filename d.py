@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -22,6 +23,10 @@ class BaseCommand(object):
         """
         pass
 
+    def pre_add_arguments(self, parser):
+        """Add app-wide arguments"""
+        pass
+
     def pre_run_check(self):
         """Implement this to check if your command is run in correct environment"""
         pass
@@ -29,9 +34,10 @@ class BaseCommand(object):
     def __init__(self):
         parser = argparse.ArgumentParser(prog=self.name())
 
+        self.pre_add_arguments(parser)
         self.add_arguments(parser)
 
-        parser.add_argument('remainder', nargs=argparse.REMAINDER)
+        parser.add_argument('remainder', nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
         self.args = vars(parser.parse_args())
 
@@ -54,6 +60,16 @@ class BaseCommand(object):
 
     def handle(self):
         raise NotImplementedError()
+
+
+class ManagerCommand(BaseCommand):
+    def pre_add_arguments(self, parser):
+        parser.add_argument('manager', help='Manager address')
+
+    def __init__(self):
+        super(ManagerCommand, self).__init__()
+
+        self.host = Host(self.args.get('manager'))
 
 
 def run(*args):
@@ -96,6 +112,11 @@ class Host(object):
 
         return output
 
+    def ssh_json(self, *args):
+        output = ''.join(self.ssh_output(*args))
+
+        return json.loads(output)
+
     def scp(self, src, dst):
         """Copy local file to the host"""
         return run('scp', src, '{hostname}:{dst}'.format(hostname=self.name, dst=dst))
@@ -104,12 +125,11 @@ class Host(object):
         return self.name
 
 
-class DeployStack(BaseCommand):
+class DeployStack(ManagerCommand):
     """Deploy or update a stack, using docker stack deploy"""
     def add_arguments(self, parser):
         parser.add_argument('-c', '--config', help='Stack description in docker-compose format', default='docker-compose.prod.yml')
 
-        parser.add_argument('manager', help='Manager')
         parser.add_argument('name', help='Stack name')
 
     def stack_path(self):
@@ -118,11 +138,9 @@ class DeployStack(BaseCommand):
     def stack_config_path(self, path='docker-compose.prod.yml'):
         return '{dir}/{path}'.format(dir=self.stack_path(), path=path)
 
-    def handle(self, config, name, manager, remainder):
-        manager = Host(manager)
-
-        manager.ssh('mkdir', '-p', self.stack_path())
-        manager.scp(config, self.stack_config_path())
+    def handle(self, config, name, remainder, **kwargs):
+        self.host.ssh('mkdir', '-p', self.stack_path())
+        self.host.scp(config, self.stack_config_path())
 
         delploy_args = [
             'docker', 'stack', 'deploy',
@@ -130,7 +148,7 @@ class DeployStack(BaseCommand):
             '-c', self.stack_config_path(),
         ] + remainder + [name]
 
-        manager.ssh(*delploy_args)
+        self.host.ssh(*delploy_args)
 
 
 class BuildImage(BaseCommand):
@@ -208,17 +226,16 @@ class PushImage(BaseCommand):
         self.docker_push(**kwargs)
 
 
-class UpdateImage(BaseCommand):
+class UpdateImage(ManagerCommand):
     """Update image in the running stack"""
     def add_arguments(self, parser):
-        parser.add_argument('manager', help='Manager')
         parser.add_argument('name', help='Stack name')
         parser.add_argument('image', help='Image name')
 
-    def find_services(self, manager, name, image):
+    def find_services(self, name, image):
         image, _ = label_and_tag(image)  # only image name
 
-        for service in manager.ssh_output(
+        for service in self.host.ssh_output(
             'docker', 'stack', 'services',
             name,
             '--format', '"{{ .Name }}|{{ .Image }}"',
@@ -230,11 +247,10 @@ class UpdateImage(BaseCommand):
             if service_image == image:
                 yield service
 
-    def handle(self, manager, name, image, remainder):
-        manager = Host(manager)
-        for service in self.find_services(manager, name, image):
+    def handle(self, name, image, remainder, **kwargs):
+        for service in self.find_services(name, image):
             print('Updating', service, 'to image', image)
-            manager.ssh(*[
+            self.host.ssh(*[
                 'docker', 'service', 'update',
                 '--with-registry-auth',
                 '--image', image,
@@ -261,9 +277,49 @@ class AddHostKey(BaseCommand):
         return path.expanduser('~/.ssh/known_hosts')
 
 
+class RunCommand(ManagerCommand):
+    """Run command one the host machine within specified container"""
+    def add_arguments(self, parser):
+        parser.add_argument('--env-from', help='Take envirnoment variables from specified service', default='')
+        parser.add_argument('-i', '--image', help='Image to run the command')
+        parser.add_argument('command', help='Command to run within container')
+
+    def handle(self, env_from, image, command, remainder, **kwargs):
+        """TODO(f213): add an ability to attach to a network"""
+        env = self.get_env(env_from) if len(env_from) else {}
+        env = ["-e '{key}={value}'".format(key=key, value=value) for key, value in env.items()]
+
+        args = [
+            'docker', 'run', '-t',
+        ] + env + [
+            image, command,
+        ] + remainder  # fuck py2
+
+        self.host.ssh(*args)
+
+    def get_env(self, env_from):
+        got = self.host.ssh_json('docker', 'service', 'inspect', env_from)[0]
+        env = got['Spec']['TaskTemplate']['ContainerSpec']['Env']
+        return {left: right for [left, right] in map(lambda a: a.split('='), env)}
+
+
+def get_command_registry():
+    def get_subclasses(klass):
+        """Recursively get subclasses"""
+        for c in klass.__subclasses__():
+            if len(c.__subclasses__()):
+                for subclass in get_subclasses(c):
+                    yield subclass
+
+            else:
+                yield c
+
+    return {klass.cmd_name(): klass for klass in get_subclasses(BaseCommand)}
+
+
 def main(command):
     """Determine command to launch"""
-    command_registry = {klass.cmd_name(): klass for klass in BaseCommand.__subclasses__()}
+    command_registry = get_command_registry()
 
     if command.lower() not in command_registry.keys():
         print('Usage: %s COMMAND <OPTIONS>' % sys.argv[0])
