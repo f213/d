@@ -114,7 +114,6 @@ class Host(object):
 
     def ssh_json(self, *args):
         output = ''.join(self.ssh_output(*args))
-        print(output)
 
         return json.loads(output)
 
@@ -286,9 +285,17 @@ class RunCommand(ManagerCommand):
         parser.add_argument('command', help='Command to run within container')
 
     def handle(self, env_from, image, command, remainder, **kwargs):
+        """TODO(f213): add an ability to attach to a network"""
         env = self.get_env(env_from) if len(env_from) else {}
-        assert False, env
-        pass
+        env = ["-e '{key}={value}'".format(key=key, value=value) for key, value in env.items()]
+
+        args = [
+            'docker', 'run', '-t',
+        ] + env + [
+            image, command,
+        ] + remainder  # fuck py2
+
+        self.host.ssh(*args)
 
     def get_env(self, env_from):
         got = self.host.ssh_json('docker', 'service', 'inspect', env_from)[0]
