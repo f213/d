@@ -233,10 +233,10 @@ class UpdateImage(ManagerCommand):
         parser.add_argument('name', help='Stack name')
         parser.add_argument('image', help='Image name')
 
-    def find_services(self, manager, name, image):
+    def find_services(self, name, image):
         image, _ = label_and_tag(image)  # only image name
 
-        for service in manager.ssh_output(
+        for service in self.host.ssh_output(
             'docker', 'stack', 'services',
             name,
             '--format', '"{{ .Name }}|{{ .Image }}"',
@@ -249,7 +249,7 @@ class UpdateImage(ManagerCommand):
                 yield service
 
     def handle(self, name, image, remainder, **kwargs):
-        for service in self.find_services(manager, name, image):
+        for service in self.find_services(name, image):
             print('Updating', service, 'to image', image)
             self.host.ssh(*[
                 'docker', 'service', 'update',
