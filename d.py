@@ -192,13 +192,14 @@ class BuildImage(BaseCommand):
 
         return ':'.join([label, tag or cls.TAGGING_METHODS[tag_method]()])
 
-    def docker_build(self, label, ctx, tag_method, **kwargs):
+    def docker_build(self, label, ctx, tag_method, remainder, **kwargs):
         label = self.label(label, tag_method=tag_method)
         print('Building', label)
 
         run(
             'docker', 'build',
             '-t', label,
+            remainder,
             ctx,
         )
         return label
