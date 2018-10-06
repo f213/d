@@ -8,10 +8,9 @@ import os
 import re
 import subprocess
 import sys
+from collections import Iterable
 from datetime import datetime
 from os import path
-
-STACK_DIR = os.environ.get('STACK_DIR', '/srv')
 
 
 class BaseCommand(object):
@@ -72,12 +71,28 @@ class ManagerCommand(BaseCommand):
         self.host = Host(self.args.get('manager'))
 
 
+def flatten_args(args):
+    """Recursively flatten an array of args, changing ('docker', 'build', ['-f', 'Dockerfile']) to ('docker', 'build', '-f', 'Dockerfile')"""
+    flattened = list()
+    for arg in args:
+        if isinstance(arg, str) or isinstance(arg, int):
+            flattened.append(str(arg))
+
+        elif isinstance(arg, Iterable):
+            flattened += flatten_args(arg)
+
+        else:
+            raise TypeError('Nor string, nor iterable arg added to flatten_args')
+
+    return flattened
+
+
 def run(*args):
-    return subprocess.check_call(args)
+    return subprocess.check_call(flatten_args(args))
 
 
 def run_with_output(*args):
-    return subprocess.check_output(args).decode()
+    return subprocess.check_output(flatten_args(args)).decode()
 
 
 def label_and_tag(name):
@@ -133,7 +148,8 @@ class DeployStack(ManagerCommand):
         parser.add_argument('name', help='Stack name')
 
     def stack_path(self):
-        return '{dir}/{path}'.format(dir=STACK_DIR, path=self.args['name'])
+        stack_dir = os.environ.get('STACK_DIR', '/srv')
+        return '{dir}/{path}'.format(dir=stack_dir, path=self.args['name'])
 
     def stack_config_path(self, path='docker-compose.prod.yml'):
         return '{dir}/{path}'.format(dir=self.stack_path(), path=path)
@@ -142,13 +158,12 @@ class DeployStack(ManagerCommand):
         self.host.ssh('mkdir', '-p', self.stack_path())
         self.host.scp(config, self.stack_config_path())
 
-        delploy_args = [
+        self.host.ssh(
             'docker', 'stack', 'deploy',
             '--prune',
             '-c', self.stack_config_path(),
-        ] + remainder + [name]
-
-        self.host.ssh(*delploy_args)
+            remainder, name,
+        )
 
 
 class BuildImage(BaseCommand):
@@ -232,29 +247,32 @@ class UpdateImage(ManagerCommand):
         parser.add_argument('name', help='Stack name')
         parser.add_argument('image', help='Image name')
 
-    def find_services(self, name, image):
-        image, _ = label_and_tag(image)  # only image name
-
+    def fetch_services(self, stack_name):
         for service in self.host.ssh_output(
             'docker', 'stack', 'services',
-            name,
+            stack_name,
             '--format', '"{{ .Name }}|{{ .Image }}"',
         ):
+            yield service.split('|')
 
-            service, image_name = service.split('|')
+    def get_services(self, name, image):
+        image, _ = label_and_tag(image)  # only image name
+
+        for service, image_name in self.fetch_services(name):
             service_image, _ = label_and_tag(image_name)
 
             if service_image == image:
                 yield service
 
     def handle(self, name, image, remainder, **kwargs):
-        for service in self.find_services(name, image):
+        for service in self.get_services(name, image):
             print('Updating', service, 'to image', image)
-            self.host.ssh(*[
+            self.host.ssh(
                 'docker', 'service', 'update',
                 '--with-registry-auth',
                 '--image', image,
-            ] + remainder + [service])
+                remainder, service,
+            )
 
 
 class AddHostKey(BaseCommand):
@@ -289,13 +307,11 @@ class RunCommand(ManagerCommand):
         env = self.get_env(env_from) if len(env_from) else {}
         env = ["-e '{key}={value}'".format(key=key, value=value) for key, value in env.items()]
 
-        args = [
+        self.host.ssh(
             'docker', 'run', '-t',
-        ] + env + [
-            image, command,
-        ] + remainder  # fuck py2
-
-        self.host.ssh(*args)
+            env, image, command,
+            remainder,
+        )
 
     def get_env(self, env_from):
         got = self.host.ssh_json('docker', 'service', 'inspect', env_from)[0]

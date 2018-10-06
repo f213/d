@@ -4,8 +4,8 @@ from d import BuildImage
 
 
 @pytest.fixture
-def command():
-    return BuildImage
+def command(mock_command):
+    return mock_command(BuildImage)
 
 
 @pytest.fixture(autouse=True)
