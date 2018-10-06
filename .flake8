@@ -8,4 +8,5 @@ exclude =
       .git,
       .tox,
       __pycache__,
-      venv
+      venv,
+      setup.py
