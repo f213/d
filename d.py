@@ -11,8 +11,6 @@ import sys
 from datetime import datetime
 from os import path
 
-STACK_DIR = os.environ.get('STACK_DIR', '/srv')
-
 
 class BaseCommand(object):
     def add_arguments(self, parser):
@@ -133,7 +131,8 @@ class DeployStack(ManagerCommand):
         parser.add_argument('name', help='Stack name')
 
     def stack_path(self):
-        return '{dir}/{path}'.format(dir=STACK_DIR, path=self.args['name'])
+        stack_dir = os.environ.get('STACK_DIR', '/srv')
+        return '{dir}/{path}'.format(dir=stack_dir, path=self.args['name'])
 
     def stack_config_path(self, path='docker-compose.prod.yml'):
         return '{dir}/{path}'.format(dir=self.stack_path(), path=path)
