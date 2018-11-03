@@ -108,32 +108,48 @@ class Host(object):
     Usage:
         host = Host('manager.my.cluser.com')
 
-        host.ssh('echo', 'i am a host')
-        host.ssh('echo', '`hostname`')
+        host.run('echo', 'i am a host')
+        host.run('echo', '`hostname`')
 
     """
+    LOCALHOST = [
+        'localhost',
+    ]
+
+    def is_local(self):
+        return self.name in self.LOCALHOST
+
     def __init__(self, name):
         self.name = name
 
-    def ssh(self, *args):
-        """Run SSH command"""
-        return run('ssh', self.name, *args)
+    def add_prefix(self, remote, cmd):
+        if self.is_local():
+            return cmd
 
-    def ssh_output(self, *args):
+        return remote + list(cmd)
+
+    def run(self, *args):
+        """Run SSH command"""
+        return run(*self.add_prefix(remote=['ssh', self.name], cmd=args))
+
+    def get_output(self, *args):
         """Run SSH command and get output as a list of strings"""
-        output = run_with_output('ssh', self.name, *args)
+        output = run_with_output(*self.add_prefix(remote=['ssh', self.name], cmd=args))
 
         return [line for line in output.split('\n') if len(line)]
 
         return output
 
-    def ssh_json(self, *args):
-        output = ''.join(self.ssh_output(*args))
+    def get_json(self, *args):
+        output = ''.join(self.get_output(*args))
 
         return json.loads(output)
 
-    def scp(self, src, dst):
+    def cp(self, src, dst):
         """Copy local file to the host"""
+        if self.is_local():
+            return run('cp', 'src', 'dst')
+
         return run('scp', src, '{hostname}:{dst}'.format(hostname=self.name, dst=dst))
 
     def __str__(self):
@@ -155,10 +171,10 @@ class DeployStack(ManagerCommand):
         return '{dir}/{path}'.format(dir=self.stack_path(), path=path)
 
     def handle(self, config, name, remainder, **kwargs):
-        self.host.ssh('mkdir', '-p', self.stack_path())
-        self.host.scp(config, self.stack_config_path())
+        self.host.run('mkdir', '-p', self.stack_path())
+        self.host.cp(config, self.stack_config_path())
 
-        self.host.ssh(
+        self.host.run(
             'docker', 'stack', 'deploy',
             '--prune',
             '-c', self.stack_config_path(),
@@ -249,7 +265,7 @@ class UpdateImage(ManagerCommand):
         parser.add_argument('image', help='Image name')
 
     def fetch_services(self, stack_name):
-        for service in self.host.ssh_output(
+        for service in self.host.get_output(
             'docker', 'stack', 'services',
             stack_name,
             '--format', '"{{ .Name }}|{{ .Image }}"',
@@ -268,7 +284,7 @@ class UpdateImage(ManagerCommand):
     def handle(self, name, image, remainder, **kwargs):
         for service in self.get_services(name, image):
             print('Updating', service, 'to image', image)
-            self.host.ssh(
+            self.host.run(
                 'docker', 'service', 'update',
                 '--with-registry-auth',
                 '--image', image,
@@ -308,14 +324,14 @@ class RunCommand(ManagerCommand):
         env = self.get_env(env_from) if len(env_from) else {}
         env = ["-e '{key}={value}'".format(key=key, value=value) for key, value in env.items()]
 
-        self.host.ssh(
+        self.host.run(
             'docker', 'run', '-t',
             env, image, command,
             remainder,
         )
 
     def get_env(self, env_from):
-        got = self.host.ssh_json('docker', 'service', 'inspect', env_from)[0]
+        got = self.host.get_json('docker', 'service', 'inspect', env_from)[0]
         env = got['Spec']['TaskTemplate']['ContainerSpec']['Env']
         return {left: right for [left, right] in map(lambda a: a.split('='), env)}
 
