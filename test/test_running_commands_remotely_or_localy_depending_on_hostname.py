@@ -25,7 +25,7 @@ def host():
 ])
 def test_ssh(host, run, hostname, call):
     host = host(hostname)
-    host.ssh('echo test')
+    host.run('echo test')
 
     run.assert_called_once_with(*call)
 
@@ -37,7 +37,7 @@ def test_ssh(host, run, hostname, call):
 ])
 def test_ssh_output(host, run_with_output, hostname, call):
     host = host(hostname)
-    host.ssh_output('echo test')
+    host.get_output('echo test')
 
     run_with_output.assert_called_once_with(*call)
 
@@ -51,7 +51,7 @@ def test_ssh_json(host, run_with_output, hostname, call):
     run_with_output.return_value = '{}'  # should be valid json
 
     host = host(hostname)
-    host.ssh_json('echo test')
+    host.get_json('echo test')
 
     run_with_output.assert_called_once_with(*call)
 
@@ -63,6 +63,6 @@ def test_ssh_json(host, run_with_output, hostname, call):
 ])
 def test_scp(host, run, hostname, call):
     host = host(hostname)
-    host.scp('src', 'dst')
+    host.cp('src', 'dst')
 
     run.assert_called_once_with(*call)

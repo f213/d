@@ -9,7 +9,7 @@ def host():
 
 @pytest.fixture
 def output(mocker):
-    return mocker.patch('d.Host.ssh_output')
+    return mocker.patch('d.Host.get_output')
 
 
 def test(host, output):
@@ -21,4 +21,4 @@ def test(host, output):
         '}',
     ]
 
-    assert host.ssh_json('test') == {"a": ["1", 2]}
+    assert host.get_json('test') == {"a": ["1", 2]}

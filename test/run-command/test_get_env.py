@@ -3,7 +3,7 @@ import pytest
 
 @pytest.fixture
 def service_spec(mocker):
-    return mocker.patch('d.Host.ssh_json')
+    return mocker.patch('d.Host.get_json')
 
 
 def test(command, service_spec):
