@@ -112,16 +112,29 @@ class Host(object):
         host.ssh('echo', '`hostname`')
 
     """
+    LOCALHOST = [
+        'localhost',
+    ]
+
+    def is_local(self):
+        return self.name in self.LOCALHOST
+
     def __init__(self, name):
         self.name = name
 
+    def add_prefix(self, remote, cmd):
+        if self.is_local():
+            return cmd
+
+        return remote + list(cmd)
+
     def ssh(self, *args):
         """Run SSH command"""
-        return run('ssh', self.name, *args)
+        return run(*self.add_prefix(remote=['ssh', self.name], cmd=args))
 
     def ssh_output(self, *args):
         """Run SSH command and get output as a list of strings"""
-        output = run_with_output('ssh', self.name, *args)
+        output = run_with_output(*self.add_prefix(remote=['ssh', self.name], cmd=args))
 
         return [line for line in output.split('\n') if len(line)]
 
@@ -134,6 +147,9 @@ class Host(object):
 
     def scp(self, src, dst):
         """Copy local file to the host"""
+        if self.is_local():
+            return run('cp', 'src', 'dst')
+
         return run('scp', src, '{hostname}:{dst}'.format(hostname=self.name, dst=dst))
 
     def __str__(self):
