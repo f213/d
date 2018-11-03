@@ -148,7 +148,7 @@ class Host(object):
     def cp(self, src, dst):
         """Copy local file to the host"""
         if self.is_local():
-            return run('cp', 'src', 'dst')
+            return run('cp', src, dst)
 
         return run('scp', src, '{hostname}:{dst}'.format(hostname=self.name, dst=dst))
 
