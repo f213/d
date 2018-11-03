@@ -1,5 +1,4 @@
 import pytest
-
 from d import DeployStack, UpdateImage, get_command_registry
 
 

@@ -1,5 +1,4 @@
 import pytest
-
 from d import BaseCommand
 
 
