@@ -11,8 +11,8 @@ def test(command, run):
 
     args = list(run.call_args[0][0])
 
-    assert "-e 'a=b'" in args
-    assert "-e 'key=value'" in args
+    assert "-ea=b" in args
+    assert "-ekey=value" in args
     assert 'org/img:latest' in args
 
 

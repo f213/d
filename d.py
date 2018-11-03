@@ -322,7 +322,7 @@ class RunCommand(ManagerCommand):
     def handle(self, env_from, image, command, remainder, **kwargs):
         """TODO(f213): add an ability to attach to a network"""
         env = self.get_env(env_from) if len(env_from) else {}
-        env = ["-e '{key}={value}'".format(key=key, value=value) for key, value in env.items()]
+        env = ["-e{key}={value}".format(key=key, value=value) for key, value in env.items()]
 
         self.host.run(
             'docker', 'run', '-t',
