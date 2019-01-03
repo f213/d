@@ -1,4 +1,5 @@
 import pytest
+
 from d import label_and_tag
 
 
