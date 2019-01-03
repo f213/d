@@ -23,7 +23,7 @@ class BaseCommand(object):
         pass
 
     def pre_add_arguments(self, parser):
-        """Add app-wide arguments"""
+        """Add command-wide arguments"""
         pass
 
     def pre_run_check(self):
@@ -49,6 +49,7 @@ class BaseCommand(object):
 
     @classmethod
     def cmd_name(cls):
+        """Lower-case command name for guessing, which command user has enterered"""
         class_name = cls.__name__
         class_name = re.sub('(.)([A-Z][a-z]+)', r'\1-\2', class_name)
         return re.sub('([a-z0-9])([A-Z])', r'\1-\2', class_name).lower()
@@ -63,7 +64,7 @@ class BaseCommand(object):
 
 class ManagerCommand(BaseCommand):
     def pre_add_arguments(self, parser):
-        parser.add_argument('manager', help='Manager address')
+        parser.add_argument('manager', help='Manager address', nargs='?', default=None)
 
     def __init__(self):
         super(ManagerCommand, self).__init__()
@@ -117,7 +118,7 @@ class Host(object):
     ]
 
     def is_local(self):
-        return self.name in self.LOCALHOST
+        return self.name in self.LOCALHOST or self.name is None
 
     def __init__(self, name):
         self.name = name

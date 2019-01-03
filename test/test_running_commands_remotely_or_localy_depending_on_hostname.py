@@ -22,6 +22,7 @@ def host():
     ['tsthost', ('ssh', 'tsthost', 'echo test')],
     ['tst.host', ('ssh', 'tst.host', 'echo test')],
     ['localhost', ['echo test']],
+    [None, ['echo test']],
 ])
 def test_ssh(host, run, hostname, call):
     host = host(hostname)
