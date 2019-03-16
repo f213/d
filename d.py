@@ -63,6 +63,7 @@ class BaseCommand(object):
 
 
 class ManagerCommand(BaseCommand):
+    """A command that runs on a cluster manager"""
     def pre_add_arguments(self, parser):
         parser.add_argument('manager', help='Manager address', nargs='?', default=None)
 
@@ -70,6 +71,30 @@ class ManagerCommand(BaseCommand):
         super(ManagerCommand, self).__init__()
 
         self.host = Host(self.args.get('manager'))
+
+
+class ImageCommand(BaseCommand):
+    """A command that handles docker image commands"""
+    TAGGING_METHODS = {
+        'sha1': lambda: os.environ['CIRCLE_SHA1'],
+        'date': lambda: datetime.now().strftime('%Y%m%d%H%M'),
+    }
+
+    @classmethod
+    def label(cls, label, tag=None, tagging_method='sha1'):
+        if ':' in label and tag is None:
+            return label
+
+        if ':' in label and tag is not None:  # replace existing tag
+            label, _ = label_and_tag(label)
+            return ':'.join([label, tag])
+
+        return ':'.join([label, tag or cls.TAGGING_METHODS[tagging_method]()])
+
+    @classmethod
+    def image_is_present(cls, label):
+        """Check if image is present in the local host"""
+        return len([img for img in run_with_output('docker', 'image', 'ls', '-q', label) if len(img)]) > 0
 
 
 def flatten_args(args):
@@ -183,12 +208,8 @@ class DeployStack(ManagerCommand):
         )
 
 
-class BuildImage(BaseCommand):
+class BuildImage(ImageCommand):
     """Build docker image and label it with HEAD commit hash"""
-    TAGGING_METHODS = {
-        'sha1': lambda: os.environ['CIRCLE_SHA1'],
-        'date': lambda: datetime.now().strftime('%Y%m%d%H%M'),
-    }
 
     def pre_run_check(self):
         assert 'CIRCLECI' in os.environ, 'This script is intended to run inside the circleci.com'
@@ -198,19 +219,8 @@ class BuildImage(BaseCommand):
         parser.add_argument('ctx', help='Build context path')
         parser.add_argument('-t', '--tag-method', help="Image taggging method, 'sha1' (from circleci) or 'date'", default='sha1')
 
-    @classmethod
-    def label(cls, label, tag=None, tag_method='sha1'):
-        if ':' in label and tag is None:
-            return label
-
-        if ':' in label and tag is not None:  # replace existing tag
-            label, _ = label_and_tag(label)
-            return ':'.join([label, tag])
-
-        return ':'.join([label, tag or cls.TAGGING_METHODS[tag_method]()])
-
-    def docker_build(self, label, ctx, tag_method, remainder, **kwargs):
-        label = self.label(label, tag_method=tag_method)
+    def docker_build(self, label, ctx, tagging_method, remainder, **kwargs):
+        label = self.label(label, tagging_method=tagging_method)
         print('Building', label)
 
         run(
@@ -233,7 +243,7 @@ class BuildImage(BaseCommand):
         self.tag_as_latest(label)
 
 
-class PushImage(BaseCommand):
+class PushImage(ImageCommand):
     """Push previously built image to the dockerhub"""
     def pre_run_check(self):
         assert 'DOCKER_USER' in os.environ and 'DOCKER_PASSWORD' in os.environ, \
@@ -252,11 +262,24 @@ class PushImage(BaseCommand):
 
     @staticmethod
     def docker_push(label, **kwargs):
+        print('Pushing', label, '...')
         run('docker', 'push', label)
 
-    def handle(self, **kwargs):
+    def handle(self, label, **kwargs):
         self.docker_login()
-        self.docker_push(**kwargs)
+        labels = [label]
+
+        tag = label_and_tag(label)[1]
+
+        if tag is None:  # if no tag given -- push the latest AND sha1 tag if present
+            labels[0] = self.label(label, 'latest')
+            if 'CIRCLECI' in os.environ:
+                latest_tagged = self.label(label, tagging_method='sha1')
+                if self.image_is_present(latest_tagged):
+                    labels.append(latest_tagged)
+
+        for label in labels:
+            self.docker_push(label, **kwargs)
 
 
 class UpdateImage(ManagerCommand):
@@ -335,6 +358,15 @@ class RunCommand(ManagerCommand):
         got = self.host.get_json('docker', 'service', 'inspect', env_from)[0]
         env = got['Spec']['TaskTemplate']['ContainerSpec']['Env']
         return {left: right for [left, right] in map(lambda a: a.split('='), env)}
+
+    def get_node(self, service):
+        nodes = self.host.get_output('docker', 'service', 'ps', service, '-f', 'desired-state=running', '--format', '"{{.Node}}"')
+
+        if not len(nodes):
+            print('No running nodes with service {} found, exiting'.format(service))
+            exit(127)
+
+        return nodes[0]
 
 
 def get_command_registry():

@@ -12,7 +12,7 @@ def test_default_taging(command, label, expected):
 
 @pytest.mark.freeze_time('2032-12-01 15:30')
 def test_taging_by_date(command):
-    assert command.label('f213/website', tag_method='date') == 'f213/website:203212011530'
+    assert command.label('f213/website', tagging_method='date') == 'f213/website:203212011530'
 
 
 @pytest.mark.parametrize('label, tag, expected', [
