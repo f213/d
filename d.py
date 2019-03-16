@@ -216,7 +216,7 @@ class BuildImage(ImageCommand):
     def add_arguments(self, parser):
         parser.add_argument('label', help='Docker image label, like you/prj')
         parser.add_argument('ctx', help='Build context path')
-        parser.add_argument('-t', '--tag-method', help="Image taggging method, 'sha1' (from circleci) or 'date'", default='sha1')
+        parser.add_argument('-t', '--tagging-method', help="Image taggging method, 'sha1' (from circleci) or 'date'", default='sha1')
 
     def docker_build(self, label, ctx, tagging_method, remainder, **kwargs):
         label = self.label(label, tagging_method=tagging_method)
