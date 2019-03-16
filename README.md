@@ -3,7 +3,7 @@
 ## Installation
 
 ```sh
-export D_RELEASE=0.4.2  # the latest one
+export D_RELEASE=0.4.4  # the latest one
 wget -O - https://raw.githubusercontent.com/f213/d/master/install.sh|sh
 ```
 
