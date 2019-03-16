@@ -3,14 +3,14 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def tag_as_latest(mocker):
-    mocker.patch('d.BuildImage.tag_as_latest')
+    return mocker.patch('d.BuildImage.tag_as_latest', return_value=True)
 
 
 def test(command, run, args_in_call):
     command.handle(
         label='org/img',
         ctx='src',
-        tag_method='sha1',
+        tagging_method='sha1',
         remainder=['--build-arg', 'foo=bar'],
     )
 
