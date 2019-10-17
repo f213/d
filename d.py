@@ -103,7 +103,7 @@ def flatten_args(args):
         if isinstance(arg, str) or isinstance(arg, int):
             flattened.append(str(arg))
 
-        elif isinstance(arg, Iterable):
+        elif isinstance(arg, list) or isinstance(arg, tuple):
             flattened += flatten_args(arg)
 
         else:
