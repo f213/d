@@ -1,4 +1,5 @@
 import pytest
+
 from d import flatten_args
 
 
@@ -7,6 +8,8 @@ from d import flatten_args
     ([['docker', 'build'], '-t', ['org/img', '-f', 'Dockerfile']], ['docker', 'build', '-t', 'org/img', '-f', 'Dockerfile']),
     (['-t', '-i'], ['-t', '-i']),
     (['-t', 5], ['-t', '5']),
+    (['-t', [], 5], ['-t', '5']),
+    (['-t', [], u'weird'], ['-t', 'weird']),
     ([['-t', '-i']], ['-t', '-i']),
 ])
 def test(args, expected):

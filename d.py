@@ -8,9 +8,15 @@ import os
 import re
 import subprocess
 import sys
-from collections import Iterable
 from datetime import datetime
 from os import path
+
+
+def is_string(input):
+    try:
+        return isinstance(input, basestring)
+    except NameError:
+        return isinstance(input, str)
 
 
 class BaseCommand(object):
@@ -100,14 +106,14 @@ def flatten_args(args):
     """Recursively flatten an array of args, changing ('docker', 'build', ['-f', 'Dockerfile']) to ('docker', 'build', '-f', 'Dockerfile')"""
     flattened = list()
     for arg in args:
-        if isinstance(arg, str) or isinstance(arg, int):
+        if is_string(arg) or isinstance(arg, int):
             flattened.append(str(arg))
 
         elif isinstance(arg, list) or isinstance(arg, tuple):
             flattened += flatten_args(arg)
 
         else:
-            raise TypeError('Nor string, nor iterable arg added to flatten_args')
+            raise TypeError('Nor string, nor iterable arg added to flatten_args: %s' % args)
 
     return flattened
 
