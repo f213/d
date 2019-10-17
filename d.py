@@ -245,8 +245,8 @@ class BuildImage(ImageCommand):
 class PushImage(ImageCommand):
     """Push previously built image to the dockerhub"""
     def pre_run_check(self):
-        assert 'DOCKER_USER' in os.environ and 'DOCKER_PASSWORD' in os.environ, \
-            'You should have $DOCKER_USER and $DOCKER_PASSWORD defined in your build env'
+        assert 'DOCKER_LOGIN' in os.environ and 'DOCKER_PASSWORD' in os.environ, \
+            'You should have $DOCKER_LOGIN and $DOCKER_PASSWORD defined in your build env'
 
     def add_arguments(self, parser):
         parser.add_argument('label', help='Docker image label, like you/prj')
@@ -255,7 +255,7 @@ class PushImage(ImageCommand):
     def docker_login():
         run(
             'docker', 'login',
-            '-u', os.environ['DOCKER_USER'],
+            '-u', os.environ['DOCKER_LOGIN'],
             '-p', os.environ['DOCKER_PASSWORD'],
         )
 

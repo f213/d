@@ -12,5 +12,5 @@ def command(mock_command):
 def prepare_environment(monkeypatch):
     monkeypatch.setenv('CIRCLECI', 'true')
     monkeypatch.setenv('CIRCLE_SHA1', 'testsha1')
-    monkeypatch.setenv('DOCKER_USER', 'mockuser')
+    monkeypatch.setenv('DOCKER_LOGIN', 'mockuser')
     monkeypatch.setenv('DOCKER_PASSWORD', 'mockpw')
